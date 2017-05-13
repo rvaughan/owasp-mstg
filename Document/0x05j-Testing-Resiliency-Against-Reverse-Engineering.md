@@ -1112,8 +1112,13 @@ N/A
 
 #### Overview
 
+<<<<<<< HEAD
 The goal of device binding is to impede an attacker when he tries to copy an app and its state from device A to device B and continue the execution of the app on device B. When device A has been deemend trusted, it might have more privileges than device B, which should not change when an app is copied from device A to device B.
 In the past, Android developers often relied on the Secure ANDROID_ID (SSAID) and MAC addresses. However, the behavior of the SSAID has changed since Android O and the behavior of MAC addresses have changed in Android N <sup>[1]</sup>. Google has set a new set of recommendations in their SDK documentation regarding identifiers as well <sup>[2]</sup>.
+=======
+The goal of device binding is to impede an attacker when he tries to copy an app and its state from device A to device B and continue the execution of the app on device B. When device A has been deemed trusted, it might have more privileges than device B, which should not change when an app is copied from device A to device B.
+In the past, Android developers often relied on the Secure ANDROID_ID (SSAID) and MAC addresses. However, the behavior of the SSAID has changed since Android O and the behavior of MAC addresses have changed in Android N. [https://android-developers.googleblog.com/2017/04/changes-to-device-identifiers-in.html]. Google has set a new set of recommendations in their SDK documentation[https://developer.android.com/training/articles/user-data-ids.html] regarding identifiers as well.
+>>>>>>> 0x6j: wip for #396: started with the overview
 
 #### Static Analysis
 
