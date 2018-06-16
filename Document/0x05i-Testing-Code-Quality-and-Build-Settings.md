@@ -1,34 +1,29 @@
-## Testing Code Quality and Build Settings
+## Code Quality and Build Settings of Android Apps
 
-### Verifying That the App is Properly Signed
+### Making Sure That the App is Properly Signed
 
 #### Overview
 
-Android requires that all APKs be digitally signed with a certificate before they can be installed. The digital signature is required by the Android system before installing/running an application, and it's also used to verify the identity of the owner for future updates of the application. This process can prevent an app from being tampered with, or modified to include malicious code.
+Android requires all APKs to be digitally signed with a certificate before they are installed or run. The digital signature is used to verify the owner's identity for application updates. This process can prevent an app from being tampered with or modified to include malicious code.
 
-When an APK is signed, a public-key certificate is attached to the APK. This certificate uniquely associates the APK to the developer and their corresponding private key. When building an app in debug mode, the Android SDK signs the app with a debug key specifically created for debugging purposes. An app signed with a debug key is not be meant for distribution and won't be accepted in most app stores, including the Google Play Store. To prepare the app for final release, the app must be signed with a release key belonging to the developer.
+When an APK is signed, a public-key certificate is attached to it. This certificate uniquely associates the APK with the developer and the developer's private key. When an app is being built in debug mode, the Android SDK signs the app with a debug key created specifically for debugging purposes. An app signed with a debug key is not meant to be distributed and won't be accepted in most app stores, including the Google Play Store.
 
-The final release build of an app must be signed with a valid release key. Note that Android expects any updates to the app to be signed with the same certificate, so a validity period of 25 years or more is recommended. Apps published on Google Play must be signed with a certificate that is valid at least until October 22th, 2033.
+The [final release build](https://developer.android.com/studio/publish/app-signing.html "Android Application Signing") of an app must be signed with a valid release key. In Android Studio, the app can be signed manually or via creation of a signing configuration that's assigned to the release build type.
 
-Two APK signing schemes are available: JAR signing (v1 scheme) APK Signature Scheme v2 (v2 scheme). The v2 signature, which is supported by Android 7.0 and higher, offers improved security and performance. Release builds should always be signed using *both* schemes.
+All app updates on Android need to be signed with the same certificate, so a [validity period of 25 years or more is recommended](https://developer.android.com/studio/publish/app-signing#considerations "Android Signing Considerations"). Apps published on Google Play must be signed with a key that that has a validity period ending after October 22th, 2033.
+
+Two APK signing schemes are available:
+- JAR signing (v1 scheme),
+- APK Signature Scheme v2 (v2 scheme).
+
+The v2 signature, which is supported by Android 7.0 and above, offers improved security and performance. Release builds should always be signed via *both* schemes.
+
 
 #### Static Analysis
 
-Verify that the release build is signed with both v1 and v2 scheme, and that the code signing certificate contained in the APK is belongs to the developer.
+Make sure that the release build has been signed via both the v1 and v2 schemes and that the code-signing certificate in the APK belongs to the developer.
 
-If you don't have the APK available locally, pull it from the device first:
-
-```bash
-$ adb shell pm list packages
-(...)
-package:com.awesomeproject
-(...)
-$ adb shell pm path com.awesomeproject
-package:/data/app/com.awesomeproject-1/base.apk
-$ adb pull /data/app/com.awesomeproject-1/base.apk
-```
-
-APK signatures can be verified using the <code>apksigner</code> tool.
+APK signatures can be verified with the `apksigner` tool.
 
 ```bash
 $ apksigner verify --verbose Desktop/example.apk
@@ -38,9 +33,9 @@ Verified using v2 scheme (APK Signature Scheme v2): true
 Number of signers: 1
 ```
 
-The contents of the signing certificate can be examined using <code>jarsigner</code>. Note the in the debug certificate, the Common Name(CN) attribute is set to "Android Debug".
+The contents of the signing certificate can be examined with `jarsigner`. Note that the Common Name (CN) attribute is set to "Android Debug" in the debug certificate.
 
-The output for an APK signed with a Debug certificate looks as follows:
+The output for an APK signed with a debug certificate is shown below:
 
 ```
 $ jarsigner -verify -verbose -certs example.apk
@@ -49,84 +44,48 @@ sm     11116 Fri Nov 11 12:07:48 ICT 2016 AndroidManifest.xml
 
       X.509, CN=Android Debug, O=Android, C=US
       [certificate is valid from 3/24/16 9:18 AM to 8/10/43 9:18 AM]
-      [CertPath not validated: Path does not chain with any of the trust anchors]
+      [CertPath not validated: Path doesn't chain with any of the trust anchors]
 (...)
 ```
 
-The output for an APK signed with a Release certificate looks as follows:
+Ignore the "CertPath not validated" error. This error occurs with Java SDK 7 and above. Instead of `jarsigner`, you can rely on the `apksigner` to verify the certificate chain.
 
-```
-$ jarsigner -verify -verbose -certs example.apk
-
-sm     11116 Fri Nov 11 12:07:48 ICT 2016 AndroidManifest.xml
-
-      X.509, CN=Awesome Corporation, OU=Awesome, O=Awesome Mobile, L=Palo Alto, ST=CA, C=US
-      [certificate is valid from 9/1/09 4:52 AM to 9/26/50 4:52 AM]
-      [CertPath not validated: Path does not chain with any of the trust anchors]
-(...)
-```
-
-Ignore the "CertPath not validated" error -  this error appears with Java SDK 7 and greater. Instead, you can rely on the <code>apksigner</code> to verify the certificate chain.
-
-#### Dynamic Analysis
-
-Static analysis should be used to verify the APK signature.
-
-#### Remediation
-
-Developers need to make sure that release builds are signed with the appropriate certificate from the release keystore. In Android Studio, this can be done manually or by configuring creating a signing configuration and assigning it to the release build type<sup>[2]</sup>.
-The signing configuration can be managed through the Android Studio GUI or the <code>signingConfigs {}</code> block in <code>build.gradle</code>. The following values need to be set to activate both v1 and v2 scheme:
+The signing configuration can be managed through Android Studio or the `signingConfig` block in `build.gradle`. To activate both the v1 and v2 schemes, the following values must be set:
 
 ```
 v1SigningEnabled true
 v2SigningEnabled true
 ```
 
-#### References
-
-##### OWASP Mobile Top 10 2016
-* M7 - Client Code Quality - https://www.owasp.org/index.php/Mobile_Top_10_2016-M7-Poor_Code_Quality
-
-##### OWASP MASVS
-- V7.1: "The app is signed and provisioned with valid certificate."
-
-##### CWE
-N/A
-
-##### Info
-- [1] Configuring your application for release - http://developer.android.com/tools/publishing/preparing.html#publishing-configure
-- [2] Application Signing - https://developer.android.com/studio/publish/app-signing.html
-
-##### Tools
-- jarsigner - http://docs.oracle.com/javase/7/docs/technotes/tools/windows/jarsigner.html
-
-
-
-### Testing If the App is Debuggable
-
-#### Overview
-
-The <code>android:debuggable</code> attribute in the <code>Application</code> tag in the Manifest determines whether or not the app can be debugged when running on a user mode build of Android. In a release build, this attribute should always be set to "false" (the default value).
-
-#### Static Analysis
-
-Check in <code>AndroidManifest.xml</code> whether the <code>android:debuggable</code> attribute is set:
-
-```xml
-<?xml version="1.0" encoding="utf-8" standalone="no"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.android.owasp">
-
-    ...
-
-    <application android:allowBackup="true" android:debuggable="true" android:icon="@drawable/ic_launcher" android:label="@string/app_name" android:theme="@style/AppTheme">
-        <meta-data android:name="com.owasp.main" android:value=".Hook"/>
-    </application>
-</manifest>
-```
+Several best practices for [configuring the app for release](http://developer.android.com/tools/publishing/preparing.html#publishing-configure "Best Practices for configuring an Android App for Release") are available in the official Android developer documentation.
 
 #### Dynamic Analysis
 
-Drozer can be used to identify if an application is debuggable. The module `app.package.attacksurface` displays information about IPC components exported by the application, in addition to whether the app is debuggable.
+Static analysis should be used to verify the APK signature.
+
+
+
+### Determining Whether the App is Debuggable
+
+#### Overview
+
+The `android:debuggable` attribute in the [`Application`  element](https://developer.android.com/guide/topics/manifest/application-element.html "Application element") that is defined in the Android manifest determines whether the app can be debugged or not.
+
+#### Static Analysis
+
+Check `AndroidManifest.xml` to determine whether the `android:debuggable` attribute has been set and to find the attribute's value:
+
+```xml
+    ...
+    <application android:allowBackup="true" android:debuggable="true" android:icon="@drawable/ic_launcher" android:label="@string/app_name" android:theme="@style/AppTheme">
+    …
+```
+
+For a release build, this attribute should always be set to "false" (the default value).
+
+#### Dynamic Analysis
+
+Drozer can be used to determine whether an application is debuggable. The Drozer module `app.package.attacksurface` also displays information about IPC components exported by the application.
 
 ```
 dz> run app.package.attacksurface com.mwr.dz
@@ -138,10 +97,10 @@ Attack Surface:
     is debuggable
 ```
 
-To scan for all debuggable applications on a device, the `app.package.debuggable` module should be used: 
+To scan for all debuggable applications on a device, use the `app.package.debuggable` module:
 
 ```
-dz> run app.package.debuggable 
+dz> run app.package.debuggable
 Package: com.mwr.dz
   UID: 10083
   Permissions:
@@ -150,70 +109,76 @@ Package: com.vulnerable.app
   UID: 10084
   Permissions:
    - android.permission.INTERNET
-``` 
+```
 
-If an application is debuggable, it is trivial to get command execution in the context of the application. In `adb` shell, execute the `run-as` binary, followed by the package name and command:
+If an application is debuggable, executing application commands is trivial. In the `adb` shell, execute `run-as` by appending the package name and application command to the binary name:
 
 ```
 $ run-as com.vulnerable.app id
 uid=10084(u0_a84) gid=10084(u0_a84) groups=10083(u0_a83),1004(input),1007(log),1011(adb),1015(sdcard_rw),1028(sdcard_r),3001(net_bt_admin),3002(net_bt),3003(inet),3006(net_bw_stats) context=u:r:untrusted_app:s0:c512,c768
 ```
 
-An alternative method to determine if an application is debuggable, is to attach jdb to the running process. If debugging is disabled, this should fail with an error.
+[Android Studio](http://developer.android.com/tools/debugging/debugging-studio.html "Debugging with Android Studio") can also be used to debug an application and verify debugging activation for an app.
 
-#### Remediation
+Another method for determining whether an application is debuggable is attaching `jdb` to the running process. If this is successful, debugging will be activated.
 
-In the `AndroidManifest.xml` file, set the `android:debuggable` flag to false, as shown below:
+The following procedure can be used to start a debug session with `jdb`:
 
-```xml
-<application android:debuggable="false">
-...
-</application>
+1. Using `adb` and `jdwp`, identify the PID of the active application that you want to debug:
+
+```
+$ adb jdwp
+2355
+16346  <== last launched, corresponds to our application
 ```
 
-#### References
+2. Create a communication channel by using `adb` between the application process (with the PID) and the analysis workstation by using a specific local port:
 
-##### OWASP Mobile Top 10 2016
-* M7 - Client Code Quality - https://www.owasp.org/index.php/Mobile_Top_10_2016-M7-Poor_Code_Quality
+```
+# adb forward tcp:[LOCAL_PORT] jdwp:[APPLICATION_PID]
+$ adb forward tcp:55555 jdwp:16346
+```
 
-##### OWASP MASVS
-* V7.2: "The app has been built in release mode, with settings appropriate for a release build (e.g. non-debuggable)."
+3. Using `jdb`, attach the debugger to the local communication channel port and start a debug session:
 
-##### CWE
+```
+$ jdb -connect com.sun.jdi.SocketAttach:hostname=localhost,port=55555
+Set uncaught java.lang.Throwable
+Set deferred uncaught java.lang.Throwable
+Initializing jdb ...
+> help
+```
 
+A few notes about debugging:
+- The tool [`JADX`](https://github.com/skylot/jadx "JADX") can be used to identify interesting locations for breakpoint insertion.
+- Help with `jdb` is available [here](https://www.tutorialspoint.com/jdb/jdb_basic_commands.htm "JDB basic commands").
+- If a "the connection to the debugger has been closed" error occurs while `jdb` is being binded to the local communication channel port, kill all `adb` sessions and start a single new session.
 
--- TODO [Add relevant CWE for "Testing If the App is Debuggable"] --
-* CWE-312 - Cleartext Storage of Sensitive Information
-
-##### Info
-* [1] Application element - https://developer.android.com/guide/topics/manifest/application-element.html
-
-##### Tools
-
-* Drozer - https://github.com/mwrlabs/drozer
-
-### Testing for Debugging Symbols
+### Finding Debugging Symbols
 
 #### Overview
 
--- TODO [Give an overview about the functionality and it's potential weaknesses] --
+Generally, you should provide compiled code with as little explanation as possible. Some metadata, such as debugging information, line numbers, and descriptive function or method names, make the binary or byte-code easier for the reverse engineer to understand, but these aren't needed in a release build and can therefore be safely omitted without impacting the app's functionality.
 
-For native binaries, use a standard tool like nm or objdump to inspect the symbol table. A release build should generally not contain any debugging symbols. If the goal is to obfuscate the library, removing unneeded dynamic symbols is also recommended.
+To inspect native binaries, use a standard tool like `nm` or `objdump` to examine the symbol table. A release build should generally not contain any debugging symbols. If the goal is to obfuscate the library, removing unnecessary dynamic symbols is also recommended.
 
 #### Static Analysis
 
-Symbols  are usually stripped during the build process, so you need the compiled byte-code and libraries to verify whether the any unnecessary metadata has been discarded.
+Symbols are usually stripped during the build process, so you need the compiled byte-code and libraries to make sure that unnecessary metadata has been discarded.
 
-To display debug symbols:
+First, find the `nm` binary in your Android NDK and export it (or create an alias).
 
 ```bash
 export $NM = $ANDROID_NDK_DIR/toolchains/arm-linux-androideabi-4.9/prebuilt/darwin-x86_64/bin/arm-linux-androideabi-nm
 ```
 
+To display debug symbols:
+
 ```bash
 $ $NM -a libfoo.so
 /tmp/toolchains/arm-linux-androideabi-4.9/prebuilt/darwin-x86_64/bin/arm-linux-androideabi-nm: libfoo.so: no symbols
 ```
+
 To display dynamic symbols:
 
 ```bash
@@ -222,15 +187,9 @@ $ $NM -D libfoo.so
 
 Alternatively, open the file in your favorite disassembler and check the symbol tables manually.
 
-#### Dynamic Analysis
+Dynamic symbols can be stripped via the `visibility` compiler flag. Adding this flag causes gcc to discard the function names while preserving the names of functions declared as `JNIEXPORT`.
 
-Static analysis should be used to verify for debugging symbols.
-
-#### Remediation
-
-Dynamic symbols can be stripped using the <code>visibility</code> compiler flag. Adding this flag causes gcc to discard the function names while still preserving the names of functions declared as <code>JNIEXPORT</code>.
-
-Add the following to build.gradle:
+Make sure that the following has been added to build.gradle:
 
 ```
         externalNativeBuild {
@@ -240,171 +199,275 @@ Add the following to build.gradle:
         }
 ```
 
-#### References
+#### Dynamic Analysis
 
-##### OWASP Mobile Top 10 2016
-* M7 - Client Code Quality - https://www.owasp.org/index.php/Mobile_Top_10_2016-M7-Poor_Code_Quality
-
-##### OWASP MASVS
-* V7.3: "Debugging symbols have been removed from native binaries."
-
-##### CWE
-
--- TODO [Add relevant CWE for "Testing for Debugging Symbols"] --
-- CWE-312 - Cleartext Storage of Sensitive Information
-
-##### Info
-
-[1] Configuring your application for release - http://developer.android.com/tools/publishing/preparing.html#publishing-configure
-[2] Debugging with Android Studio - http://developer.android.com/tools/debugging/debugging-studio.html
-
-##### Tools
-
--- TODO [Add relevant tools for "Testing for Debugging Symbols"] --
-* Enjarify - https://github.com/google/enjarify
+Static analysis should be used to verify debugging symbols.
 
 
-
-### Testing for Debugging Code and Verbose Error Logging
+### Finding Debugging Code and Verbose Error Logging
 
 #### Overview
 
-`StrictMode` - https://developer.android.com/reference/android/os/StrictMode.html
--- TODO [Give an overview about the functionality and it's potential weaknesses] --
+StrictMode is a developer tool for detecting violations, e.g. accidental disk or network access on the application's main thread. It can also be used to check for good coding practices, such as implementing performant code.
+
+Here is [an example of `StrictMode`](https://developer.android.com/reference/android/os/StrictMode.html "StrictMode Class") with policies enabled for disk and network access to the main thread:
+
+```Java
+public void onCreate() {
+     if (DEVELOPER_MODE) {
+         StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder()
+                 .detectDiskReads()
+                 .detectDiskWrites()
+                 .detectNetwork()   // or .detectAll() for all detectable problems
+                 .penaltyLog()
+                 .build());
+         StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder()
+                 .detectLeakedSqlLiteObjects()
+                 .detectLeakedClosableObjects()
+                 .penaltyLog()
+                 .penaltyDeath()
+                 .build());
+     }
+     super.onCreate();
+ }
+```
+
+Inserting the policy in the `if` statement with the `DEVELOPER_MODE` condition is recommended. To disable `StrictMode`, `DEVELOPER_MODE` must be disabled for the release build.
 
 #### Static Analysis
 
--- TODO [Add content on white-box testing for "Testing for Debugging Code and Verbose Error Logging"] --
+To determine whether `StrictMode` is enabled, you can look for the `StrictMode.setThreadPolicy` or `StrictMode.setVmPolicy` methods. Most likely, they will be in the `onCreate` method.
+
+The [detection methods for the thread policy](http://javabeat.net/strictmode-android-1/ "What is StrictMode in Android?") are
+
+```
+detectDiskWrites()
+detectDiskReads()
+detectNetwork()
+```
+
+The [penalties for thread policy violation](http://javabeat.net/strictmode-android-1/ "What is StrictMode in Android?") are
+
+```
+penaltyLog() // Logs a message to LogCat
+penaltyDeath() // Crashes application, runs at the end of all enabled penalties
+penaltyDialog() // Shows a dialog
+```
+
+Have a look at the [best practices](https://code.tutsplus.com/tutorials/android-best-practices-strictmode--mobile-7581 "Android Best Practices: StrictMode") for using StrictMode.
 
 #### Dynamic Analysis
 
--- TODO [Add content on black-box testing for "Testing for Debugging Code and Verbose Error Logging"] --
+There are several ways of detecting `StrictMode`; the best choice depends on how the policies' roles are implemented. They include
 
-#### Remediation
-
--- TODO [Describe the best practices that developers should follow to prevent this issue "Testing for Debugging Code and Verbose Error Logging"] --
-
-#### References
-
-##### OWASP Mobile Top 10 2016
-* M7 - Client Code Quality - https://www.owasp.org/index.php/Mobile_Top_10_2016-M7-Poor_Code_Quality
-
-##### OWASP MASVS
-* V7.4: "Debugging code has been removed, and the app does not log verbose errors or debugging messages."
-
-##### CWE
--- TODO [Add relevant CWE for "Testing for Debugging Code and Verbose Error Logging"] --
-- CWE-312 - Cleartext Storage of Sensitive Information
-
-##### Info
--- TODO
-
-##### Tools
--- TODO [Add relevant tools for "Testing for Debugging Code and Verbose Error Logging"] --
-* Enjarify - https://github.com/google/enjarify
+- Logcat,
+- a warning dialog,
+- application crash.
 
 
+### Testing for Injection Flaws
+
+#### Overview
+
+Android apps can expose functionality through custom URL schemes (which are a part of Intents). They can expose functionality to
+
+- other apps (via IPC mechanisms, such as Intents, Binders, Android Shared Memory (ASHMEM), or BroadcastReceivers),
+- the user (via the user interface).
+
+None of the input from these sources can be trusted; it must be validated and/or sanitized. Validation ensures processing of data that the app is expecting only. If validation is not enforced, any input can be sent to the app, which may allow an attacker or malicious app to exploit app functionality.
+
+
+The following portions of the source code should be checked if any app functionality has been exposed:
+
+- Custom URL schemes. Check the test case "Testing Custom URL Schemes" as well for further test scenarios.
+- IPC Mechanisms (Intents, Binders, Android Shared Memory, or BroadcastReceivers). Check the test case "Testing Whether Sensitive Data Is Exposed via IPC Mechanisms" as well for further test scenarios.
+- User interface
+
+An example of a vulnerable IPC mechanism is shown below.
+
+You can use *ContentProviders* to access database information, and you can probe services to see if they return data. If data is not validated properly, the content provider may be prone to SQL injection while other apps are interacting with it. See the following vulnerable implementation of a *ContentProvider*.
+
+```xml
+<provider
+    android:name=".OMTG_CODING_003_SQL_Injection_Content_Provider_Implementation"
+    android:authorities="sg.vp.owasp_mobile.provider.College">
+</provider>
+```
+
+The `AndroidManifest.xml` above defines a content provider that's exported and therefore available to all other apps. The `query` function in the `OMTG_CODING_003_SQL_Injection_Content_Provider_Implementation.java` class should be inspected.
+
+```java
+@Override
+public Cursor query(Uri uri, String[] projection, String selection,String[] selectionArgs, String sortOrder) {
+    SQLiteQueryBuilder qb = new SQLiteQueryBuilder();
+    qb.setTables(STUDENTS_TABLE_NAME);
+
+    switch (uriMatcher.match(uri)) {
+        case STUDENTS:
+            qb.setProjectionMap(STUDENTS_PROJECTION_MAP);
+            break;
+
+        case STUDENT_ID:
+            // SQL Injection when providing an ID
+            qb.appendWhere( _ID + "=" + uri.getPathSegments().get(1));
+            Log.e("appendWhere",uri.getPathSegments().get(1).toString());
+            break;
+
+        default:
+            throw new IllegalArgumentException("Unknown URI " + uri);
+    }
+
+    if (sortOrder == null || sortOrder == ""){
+        /**
+         * By default sort on student names
+         */
+        sortOrder = NAME;
+    }
+    Cursor c = qb.query(db, projection, selection, selectionArgs,null, null, sortOrder);
+
+    /**
+     * register to watch a content URI for changes
+     */
+    c.setNotificationUri(getContext().getContentResolver(), uri);
+    return c;
+}
+```
+
+While the user is providing a STUDENT_ID at `content://sg.vp.owasp_mobile.provider.College/students`, the query statement is prone to SQL injection. Obviously [prepared statements](https://www.owasp.org/index.php/SQL_Injection_Prevention_Cheat_Sheet "OWASP SQL Injection Cheat Sheet") must be used to avoid SQL injection, but [input validation](https://www.owasp.org/index.php/Input_Validation_Cheat_Sheet "OWASP Input Validation Cheat Sheet") should also be applied so that only input that the app is expecting is processed.
+
+All app functions that process data coming in through the UI should implement input validation:
+
+- For user interface input, [Android Saripaar v2](https://github.com/ragunathjawahar/android-saripaar "Android Saripaar v2") can be used.
+- For input from IPC or URL schemes, a validation function should be created. For example, the following determines whether the [string is alphanumeric](https://stackoverflow.com/questions/11241690/regex-for-checking-if-a-string-is-strictly-alphanumeric "Input Validation"):
+
+```java
+public boolean isAlphaNumeric(String s){
+    String pattern= "^[a-zA-Z0-9]*$";
+    return s.matches(pattern);
+}
+```
+
+An alternative to validation functions is type conversion, with, for example, `Integer.parseInt` if only integers are expected. The [OWASP Input Validation Cheat Sheet](https://www.owasp.org/index.php/Input_Validation_Cheat_Sheet "OWASP Input Validation Cheat Sheet") contains more information about this topic.
+
+#### Dynamic Analysis
+
+The tester should manually test the input fields with strings like `OR 1=1--` if, for example, a local SQL injection vulnerability has been identified.
+
+On a rooted device, the command content can be used to query the data from a Content Provider. The following command queries the vulnerable function described above.
+
+```
+content query --uri content://sg.vp.owasp_mobile.provider.College/students
+```
+
+SQL injection can be exploited with the following command. Instead of getting the record for Bob only, the user can retrieve all data.
+
+```
+content query --uri content://sg.vp.owasp_mobile.provider.College/students --where "name='Bob') OR 1=1--''"
+```
+
+Drozer can also be used for dynamic testing.
 
 ### Testing Exception Handling
 
 #### Overview
 
--- TODO [Give an overview about the functionality and it's potential weaknesses] --
+Exceptions occur when an application gets into an abnormal or error state. Both Java and C++ may throw exceptions. Testing exception handling is about ensuring that the app will handle an exception and transition to a safe state without exposing sensitive information via the UI or the app's logging mechanisms.
 
 #### Static Analysis
 
-Review the source code to understand and identify how the application handles various types of errors (IPC communications, remote services invocation, etc). Here are some examples of the checks to be performed at this stage :
+Review the source code to understand the application and identify how it handles different types of errors (IPC communications, remote services invocation, etc.). Here are some examples of things to check at this stage:
 
-* Verify that the application use a well-designed and unified scheme to handle exceptions<sup>[1]</sup>.
-* Verify that the application doesn't expose sensitive information while handling exceptions, but are still verbose enough to explain the issue to the user.
+- Make sure that the application uses a well-designed and unified scheme to [handle exceptions](https://www.securecoding.cert.org/confluence/pages/viewpage.action?pageId=18581047 "Exceptional Behavior (ERR)").
+- Plan for standard `RuntimeException`s (e.g.`NullPointerException`, `IndexOutOfBoundsException`, `ActivityNotFoundException`, `CancellationException`, `SQLException`) by creating proper null checks, bound checks, and the like. An [overview of the available subclasses of `RuntimeException`](https://developer.android.com/reference/java/lang/RuntimeException.html "Runtime Exception Class") can be found in the Android developer documentation. A child of `RuntimeException` should be thrown intentionally, and the intent should be handled by the calling method.
+- Make sure that for every non-runtime `Throwable` there's a proper catch handler, which ends up handling the actual exception properly.
+- When an exception is thrown, make sure that the application has centralized handlers for exceptions that cause similar behavior. This can be a static class. For exceptions specific to the method, provide specific catch blocks.
+- Make sure that the application doesn't expose sensitive information while handling exceptions in its UI or log-statements. Ensure that exceptions are still verbose enough to explain the issue to the user.
+- Make sure that all confidential information handled by high-risk applications is always wiped during execution of the `finally` blocks.
+
+```java
+byte[] secret;
+try{
+	//use secret
+} catch (SPECIFICEXCEPTIONCLASS | SPECIFICEXCEPTIONCLASS2  e) {
+	// handle any issues
+} finally {
+	//clean the secret.
+}
+```
+
+Adding a general exception handler for uncaught exceptions is a best practice for resetting the application's state when a crash is imminent:
+
+```java
+public class MemoryCleanerOnCrash implements Thread.UncaughtExceptionHandler {
+
+    private static final MemoryCleanerOnCrash S_INSTANCE = new MemoryCleanerOnCrash();
+    private final List<Thread.UncaughtExceptionHandler> mHandlers = new ArrayList<>();
+
+	//initialize the handler and set it as the default exception handler
+    public static void init() {
+        S_INSTANCE.mHandlers.add(Thread.getDefaultUncaughtExceptionHandler());
+        Thread.setDefaultUncaughtExceptionHandler(S_INSTANCE);
+    }
+
+	 //make sure that you can still add exception handlers on top of it (required for ACRA for instance)
+    public void subscribeCrashHandler(Thread.UncaughtExceptionHandler handler) {
+        mHandlers.add(handler);
+    }
+
+    @Override
+    public void uncaughtException(Thread thread, Throwable ex) {
+
+			//handle the cleanup here
+			//....
+			//and then show a message to the user if possible given the context
+
+        for (Thread.UncaughtExceptionHandler handler : mHandlers) {
+            handler.uncaughtException(thread, ex);
+        }
+    }
+}
+```
+
+Now the handler's initializer must be called in your custom `Application` class (e.g., the class that extends `Application`):
+
+```java
+	 @Override
+    protected void attachBaseContext(Context base) {
+        super.attachBaseContext(base);
+        MemoryCleanerOnCrash.init();
+    }
+```
 
 #### Dynamic Analysis
 
--- TODO [Describe how to test for this issue using static and dynamic analysis techniques. This can include everything from simply monitoring aspects of the app’s behavior to code injection, debugging, instrumentation, etc. ] --
+There are several ways to do dynamic analysis:
 
-#### Remediation
+- Use Xposed to hook into methods and either call them with unexpected values or overwrite existing variables with unexpected values (e.g., null values).
+- Type unexpected values into the Android application's UI fields.
+- Interact with the application using its intents, its public providers, and unexpected values.
+- Tamper with the network communication and/or the files stored by the application.
 
--- TODO [Describe the best practices that developers should follow to prevent this issue "Testing Exception Handling"] --
+The application should never crash; it should
 
-#### References
-
-##### OWASP Mobile Top 10 2016
-* M7 - Client Code Quality - https://www.owasp.org/index.php/Mobile_Top_10_2016-M7-Poor_Code_Quality
-
-##### OWASP MASVS
-* V7.5: "The app catches and handles possible exceptions."
-* V7.6: "Error handling logic in security controls denies access by default."
-
-##### CWE
--- TODO [Add relevant CWE for "Testing Exception Handling"] --
-- CWE-312 - Cleartext Storage of Sensitive Information
-
-##### Info
-
-[1] Exceptional Behavior (ERR) - https://www.securecoding.cert.org/confluence/pages/viewpage.action?pageId=18581047
-
-##### Tools
-
--- TODO [Add relevant tools for "Testing Exception Handling"] --
-* Enjarify - https://github.com/google/enjarify
+- recover from the error or transition into a state in which it can inform the user of its inability to continue,
+- if necessary, tell the user to take appropriate action (The message should not leak sensitive information.),
+- not provide any information in logging mechanisms used by the application.
 
 
-
-
-### Testing for Memory Bugs in Unmanaged Code
+### Make Sure That Free Security Features Are Activated
 
 #### Overview
 
--- TODO [Give an overview about the functionality and it's potential weaknesses] --
+Because decompiling Java classes is trivial, applying some basic obfuscation to the release byte-code is recommended. ProGuard offers an easy way to shrink and obfuscate code and to strip unneeded debugging information from the byte-code of Android Java apps. It replaces identifiers, such as class names, method names, and variable names, with meaningless character strings. This is a type of layout obfuscation, which is "free" in that it doesn't impact the program's performance.
+
+Since most Android applications are Java-based, they are [immune to buffer overflow vulnerabilities](https://www.owasp.org/index.php/Reviewing_Code_for_Buffer_Overruns_and_Overflows#.NET_.26_Java "Java Buffer Overflows"). Nevertheless, a buffer overflow vulnerability may still be applicable when you're using the Android NDK; therefore, consider secure compiler settings.
 
 #### Static Analysis
 
--- TODO [Add content for white-box testing "Testing for Memory Management Bugs"] --
+If source code is provided, you can check the build.gradle file to see whether obfuscation settings have been applied. In the example below, you can see that `minifyEnabled` and `proguardFiles` are set. Creating exceptions to protect some classes from obfuscation (with "-keepclassmembers" and "-keep class") is common. Therefore, auditing the ProGuard configuration file to see what classes are exempted is important. The `getDefaultProguardFile('proguard-android.txt')` method gets the default ProGuard settings from the `<Android SDK>/tools/proguard/` folder. The file `proguard-rules.pro` is where you define custom ProGuard rules. You can see that many extended classes in our sample `proguard-rules.pro` file are common Android classes. This should be defined more granularly on specific classes or libraries.
 
-#### Dynamic Analysis
+By default, ProGuard removes attributes that are useful for debugging, including line numbers, source file names, and variable names. ProGuard is a free Java class file shrinker, optimizer, obfuscator, and pre-verifier. It is shipped with Android's SDK tools. To activate shrinking for the release build, add the following to build.gradle:
 
--- TODO [Add content for black-box testing "Testing for Memory Management Bugs"] --
-
-#### Remediation
-
--- TODO [Add remediations for "Testing for Memory Management Bugs"] --
-
-#### References
-
-##### OWASP Mobile Top 10 2016
-* M7 - Client Code Quality - https://www.owasp.org/index.php/Mobile_Top_10_2016-M7-Poor_Code_Quality
-
-##### OWASP MASVS
-* V7.7: "In unmanaged code, memory is allocated, freed and used securely."
-
-##### CWE
--- TODO [Add relevant CWE for "Testing for Memory Management Bugs"] --
-- CWE-312 - Cleartext Storage of Sensitive Information
-
-##### Info
-* Configuring your application for release - http://developer.android.com/tools/publishing/preparing.html#publishing-configure
-* Debugging with Android Studio - http://developer.android.com/tools/debugging/debugging-studio.html
-
-##### Tools
--- TODO [Add relevant tools for "Testing for Memory Management Bugs"] --
-* Enjarify - https://github.com/google/enjarify
-
-
-
-### Verify That Free Security Features Are Activated
-
-#### Overview
-
-As Java classes are trivial to decompile, applying some basic obfuscation to the release bytecode is recommended. For Java apps on Android, ProGuard offers an easy way to shrink and obfuscate code. It replaces identifiers such as class names, method names and variable names with meaningless character combinations. This is a form of layout obfuscation, which is “free” in that it doesn't impact the performance of the program.
-
-Since most Android applications are Java based, they are immune<sup>[1]</sup> to buffer overflow vulnerabilities.
-
-
-#### Static Analysis
-
-If source code is provided, the build.gradle file can be checked to see if obfuscation settings are applied. From the example below, you can see that `minifyEnabled` and `proguardFiles` are set. It is common to create exceptions for some classes from obfuscation with "-keepclassmembers" and "-keep class". Therefore it is important to audit the ProGuard configuration file to see what classes are exempted. The `getDefaultProguardFile('proguard-android.txt')` method gets the default ProGuard settings from the `<Android SDK>/tools/proguard/` folder. The file `proguard-rules.pro` is where you define custom ProGuard rules. From our sample `proguard-rules.pro` file, you can see that many classes that extend common android classes are exempted, which should be done more granular on specific classes or libraries.
-
-build.gradle
 ```
 android {
     buildTypes {
@@ -427,10 +490,11 @@ proguard-rules.pro
 
 #### Dynamic Analysis
 
-If source code is not provided, an APK can be decompiled to verify if the codebase has been obfuscated. dex2jar can be used to convert dex code to jar file. Tools like JD-GUI can be used to check if class, method and variable name is human readable.
+If source code has not been provided, an APK can be decompiled to determine whether the codebase has been obfuscated. Several tools are available for converting dex code to a jar file (e.g., dex2jar). The jar file can be opened with tools (such as JD-GUI) that can be used to make sure that class, method, and variable names are not human-readable.
 
-Sample obfuscated code block
-```
+Sample obfuscated code block:
+
+```java
 package com.a.a.a;
 
 import com.a.a.b.a;
@@ -456,40 +520,36 @@ class a$b
 }
 ```
 
-#### Remediation
+### References
 
-ProGuard should be used to strip unneeded debugging information from the Java bytecode. By default, ProGuard removes attributes that are useful for debugging, including line numbers, source file names and variable names. ProGuard is a free Java class file shrinker, optimizer, obfuscator and pre-verifier. It is shipped with Android’s SDK tools. To activate shrinking for the release build, add the following to build.gradle:
+#### OWASP Mobile Top 10 2016
 
-```
-android {
-    buildTypes {
-        release {
-            minifyEnabled true
-            proguardFiles getDefaultProguardFile(‘proguard-android.txt'),
-                    'proguard-rules.pro'
-        }
-    }
-    ...
-}
-```
+- M7 - Client Code Quality - https://www.owasp.org/index.php/Mobile_Top_10_2016-M7-Poor_Code_Quality
 
-#### References
+#### OWASP MASVS
 
-##### OWASP Mobile Top 10 2016
-* M7 - Client Code Quality - https://www.owasp.org/index.php/Mobile_Top_10_2016-M7-Poor_Code_Quality
+- V6.2: "All inputs from external sources and the user are validated and if necessary sanitized. This includes data received via the UI, IPC mechanisms such as intents, custom URLs, and network sources."
+- V7.1: "The app is signed and provisioned with valid certificate."
+- V7.2: "The app has been built in release mode, with settings appropriate for a release build (e.g. non-debuggable)."
+- V7.3: "Debugging symbols have been removed from native binaries."
+- V7.4: "Debugging code has been removed, and the app does not log verbose errors or debugging messages."
+- V7.6: "The app catches and handles possible exceptions."
+- V7.7: "Error handling logic in security controls denies access by default."
+- V7.9: "Free security features offered by the toolchain, such as byte-code minification, stack protection, PIE support and automatic reference counting, are activated."
 
-##### OWASP MASVS
-* V7.8: "Free security features offered by the toolchain, such as byte-code minification, stack protection, PIE support and automatic reference counting, are activated."
+#### CWE
 
-##### CWE
--- TODO [Add relevant CWE for Verifying that Java Bytecode Has Been Minified] --
-- CWE-312 - Cleartext Storage of Sensitive Information
+- CWE-20 - Improper Input Validation
+- CWE-215 - Information Exposure through Debug Information
+- CWE-388 - Error Handling
+- CWE-489 - Leftover Debug Code
+- CWE-656 - Reliance on Security through Obscurity
 
-##### Info
-[1] Java Buffer Overflows - https://www.owasp.org/index.php/Reviewing_Code_for_Buffer_Overruns_and_Overflows#.NET_.26_Java
-[2] Configuring your application for release - http://developer.android.com/tools/publishing/preparing.html#publishing-configure
-[3] Debugging with Android Studio - http://developer.android.com/tools/debugging/debugging-studio.html
 
-##### Tools
--- TODO [Add relevant tools for Verifying that Java Bytecode Has Been Minified] --
-* Enjarify - https://github.com/google/enjarify
+#### Tools
+
+- ProGuard - https://www.guardsquare.com/en/proguard
+- jarsigner - http://docs.oracle.com/javase/7/docs/technotes/tools/windows/jarsigner.html
+- Xposed - http://repo.xposed.info/
+- Drozer - https://labs.mwrinfosecurity.com/assets/BlogFiles/mwri-drozer-user-guide-2015-03-23.pdf
+- GNU nm - https://ftp.gnu.org/old-gnu/Manuals/binutils-2.12/html_node/binutils_4.html
